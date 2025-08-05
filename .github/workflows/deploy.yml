@@ -1,0 +1,35 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_KEY }}
+
+    - name: Deploy to server
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} << 'EOF'
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          cd /home
+          if [ ! -d "BuildingManagementSaas/.git" ]; then
+            git clone git@github.com:wakil69/BuildingManagementSaas.git
+          else
+            cd BuildingManagementSaas
+            git reset --hard HEAD
+            git pull origin main
+          fi
+          cd BuildingManagementSaas
+          sudo docker compose down
+          sudo docker compose up -d --build
+        EOF
